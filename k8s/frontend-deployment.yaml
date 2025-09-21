@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/bbapp-frontend:latest
+        image: 637423431507.dkr.ecr.ap-south-1.amazonaws.com/bbapp-frontend:latest
         ports:
         - containerPort: 80
