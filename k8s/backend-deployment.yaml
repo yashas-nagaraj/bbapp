@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/bbapp-backend:latest
+        image: 637423431507.dkr.ecr.ap-south-1.amazonaws.com/bbapp-backend:latest
         ports:
         - containerPort: 3000
         env: []
