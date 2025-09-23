@@ -1,1 +1,89 @@
-<!doctype html><html><head><title>BBApp Seasons</title><link rel='stylesheet' href='styles.css'></head><body class='seasons'><div class='overlay'></div><main class='container'><h1>Breaking Bad - Seasons</h1><section id='seasons-list'></section><section class='qa'><h2>Ask a question</h2><form id='q-form'><input id='name' placeholder='Your name'><textarea id='question'></textarea><button type='submit'>Ask</button></form><h3>Latest questions</h3><ul id='latest-questions'></ul></section></main><script src='app.js'></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BBApp - Seasons</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="seasons">
+  <main class="container">
+    <header style="margin-bottom:1.2rem">
+      <h1>Breaking Bad - Seasons</h1>
+      <p class="sub">Season summaries and episode counts</p>
+    </header>
+
+    <section id="seasons-grid" class="seasons-grid" aria-label="Seasons"></section>
+
+    <section class="qa" id="qa-panel">
+      <h2>Ask a question</h2>
+      <form id="q-form" class="q-form">
+        <div class="row">
+          <input type="text" id="name" placeholder="Your name" />
+          <button type="submit" class="btn small">Ask</button>
+        </div>
+        <textarea id="question" placeholder="Ask something about the show..." rows="4"></textarea>
+      </form>
+
+      <h3>Latest questions</h3>
+      <ul id="latest-questions" class="latest-questions"></ul>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE = (location.port === '8080' || location.hostname === 'localhost') ? 'http://localhost:3000/api' : '/api';
+    function escapeHtml(s){ return (s||'').toString().replace(/[&<>\"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[c])); }
+
+    const seasonsStatic = [
+      { season: 1, episodes: 7, summary: 'Walter White partners with Jesse Pinkman to produce meth after a cancer diagnosis.' },
+      { season: 2, episodes: 13, summary: 'Their operation grows. Jane’s death and a mid-air collision mark Walt’s descent.' },
+      { season: 3, episodes: 13, summary: 'Gus Fring offers Walt a superlab. Jesse spirals, and cartel threats rise.' },
+      { season: 4, episodes: 13, summary: 'A chess game with Gus Fring ends explosively, cementing Walt’s transformation.' },
+      { season: 5, episodes: 16, summary: 'Walt becomes kingpin, Hank discovers his secret, and the story ends in tragedy and freedom.' }
+    ];
+
+    async function loadSeasons(){
+      const grid = document.getElementById('seasons-grid');
+      grid.innerHTML = '';
+      seasonsStatic.forEach(s => {
+        const div = document.createElement('article');
+        div.className = 'season-card';
+        div.innerHTML = '<h3>Season ' + escapeHtml(s.season) + ' — ' + escapeHtml(String(s.episodes)) + ' episodes</h3>' +
+                        '<p class="season-summary">' + escapeHtml(s.summary) + '</p>';
+        grid.appendChild(div);
+      });
+    }
+
+    async function loadLatestQuestions(){
+      const res = await fetch(API_BASE + '/questions');
+      if(!res.ok) return;
+      const qs = await res.json();
+      const list = document.getElementById('latest-questions');
+      list.innerHTML = '';
+      for(const q of qs){
+        const li = document.createElement('li');
+        li.className = 'question-item';
+        li.innerHTML = `<strong>${escapeHtml(q.name||'Anon')}</strong>: ${escapeHtml(q.question)}`;
+        list.appendChild(li);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      loadSeasons();
+      loadLatestQuestions();
+      document.getElementById('q-form').addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const name = document.getElementById('name').value || 'Anonymous';
+        const question = document.getElementById('question').value;
+        if(!question) return;
+        await fetch(API_BASE + '/questions', {
+          method:'POST', headers:{'content-type':'application/json'},
+          body: JSON.stringify({name, question})
+        });
+        e.target.reset();
+        loadLatestQuestions();
+      });
+    });
+  </script>
+</body>
+</html>
