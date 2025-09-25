@@ -1,12 +1,13 @@
-const API_BASE = '/api'; // frontend served by nginx on same host; in k8s/compose we route /api
+const API_BASE = `http://${window.location.hostname}:3000/api`;
 
-function escapeHtml(s){ return (s||'').toString().replace(/[&<>\"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;' }[c])); }
+function escapeHtml(s){ return (s||'').toString().replace(/[&<>\"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c])); }
 
 async function loadSeasons(){
   try{
     const res = await fetch(API_BASE + '/seasons');
     const seasons = await res.json();
     const grid = document.getElementById('seasons-grid');
+    if(!grid) return;
     grid.innerHTML = '';
     seasons.forEach(s => {
       const card = document.createElement('article');
@@ -17,16 +18,16 @@ async function loadSeasons(){
       `;
       grid.appendChild(card);
     });
-  }catch(e){
-    console.error('loadSeasons', e);
-  }
+  }catch(e){ console.error('loadSeasons', e); }
 }
 
 async function loadLatestQuestions(){
   try{
     const res = await fetch(API_BASE + '/questions');
+    if(!res.ok) throw new Error('questions fetch failed: ' + res.status);
     const qs = await res.json();
     const list = document.getElementById('latest-questions');
+    if(!list) return;
     list.innerHTML = '';
     for(const q of qs){
       const li = document.createElement('li');
@@ -46,11 +47,8 @@ async function loadLatestQuestions(){
         </div>
       `;
       list.appendChild(li);
-
-      // load answers for this question
       loadAnswers(q.id);
     }
-    // attach submit handlers
     document.querySelectorAll('.a-form').forEach(f=>{
       f.addEventListener('submit', async ev=>{
         ev.preventDefault();
@@ -59,11 +57,8 @@ async function loadLatestQuestions(){
         const answer = f.querySelector('.a-text').value;
         if(!answer) return alert('Write an answer');
         const ok = await postAnswer(qid, name, answer);
-        if(ok){
-          f.querySelector('.a-text').value='';
-          f.querySelector('.a-name').value='';
-          loadAnswers(qid);
-        } else alert('Failed to post answer');
+        if(ok){ f.querySelector('.a-text').value=''; f.querySelector('.a-name').value=''; loadAnswers(qid); }
+        else alert('Failed to post answer');
       });
     });
   }catch(e){ console.error('loadLatestQuestions', e); }
@@ -72,6 +67,7 @@ async function loadLatestQuestions(){
 async function loadAnswers(question_id){
   try{
     const res = await fetch(API_BASE + '/answers/' + question_id);
+    if(!res.ok) return;
     const answers = await res.json();
     const container = document.getElementById('answers-' + question_id);
     if(!container) return;
@@ -101,23 +97,25 @@ async function postAnswer(question_id, name, answer){
   }catch(e){ console.error('postAnswer', e); return false; }
 }
 
-// hook up question form
 document.addEventListener('DOMContentLoaded', ()=>{
   if(document.getElementById('seasons-grid')){
     loadSeasons();
     loadLatestQuestions();
     const form = document.getElementById('q-form');
-    form.addEventListener('submit', async ev=>{
-      ev.preventDefault();
-      const name = document.getElementById('name').value || 'Anonymous';
-      const question = document.getElementById('question').value;
-      if(!question) return alert('Please write a question');
-      const ok = await postQuestion(name, question);
-      if(ok){
-        document.getElementById('question').value='';
-        document.getElementById('name').value='';
-        await loadLatestQuestions();
-      } else alert('Failed to submit question');
-    });
+    if(form){
+      form.addEventListener('submit', async ev=>{
+        ev.preventDefault();
+        const name = document.getElementById('name').value || 'Anonymous';
+        const question = document.getElementById('question').value;
+        if(!question) return alert('Please write a question');
+        const ok = await postQuestion(name, question);
+        if(ok){
+          document.getElementById('question').value=''; document.getElementById('name').value='';
+          await loadLatestQuestions();
+          const list = document.getElementById('latest-questions');
+          if(list) list.scrollTop = list.scrollHeight;
+        } else alert('Failed to submit question');
+      });
+    }
   }
 });

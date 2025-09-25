@@ -9,13 +9,15 @@ app.use(bodyParser.json());
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
+  port: Number(process.env.DB_PORT || 5432),
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || 'pass',
-  database: process.env.DB_NAME || 'bbapp'
+  database: process.env.DB_NAME || 'bbapp',
+  // RDS typically requires SSL
+  ssl: { rejectUnauthorized: false }
 });
 
-// -- Seasons: detailed 5-season summaries
+// --- Seasons (static)
 const seasons = [
   { season: 1, episodes: 7, summary: 'Walter White, a high-school chemistry teacher, partners with former student Jesse Pinkman to produce meth to secure his family’s future after a cancer diagnosis. The season shows Walt’s first steps into crime and the moral shockwaves that follow.' },
   { season: 2, episodes: 13, summary: 'Walt and Jesse’s operation grows more dangerous. The season explores consequences — plane tragedy looms across the storylines, and relationships and lies deepen.' },
@@ -24,11 +26,10 @@ const seasons = [
   { season: 5, episodes: 16, summary: 'Walt’s empire reaches its peak and then collapses. The final season resolves major storylines with high-stakes confrontations, consequences for all the major characters, and a final reckoning.' }
 ];
 
-// --- Health + seasons
 app.get('/api/health', (_, res) => res.json({ ok: true }));
-app.get('/api/seasons', (req, res) => res.json(seasons));
+app.get('/api/seasons', (_, res) => res.json(seasons));
 
-// --- Questions endpoints
+// Questions
 app.post('/api/questions', async (req, res) => {
   const { name, question } = req.body;
   if (!question || question.trim() === '') return res.status(400).send('Question required');
@@ -44,7 +45,7 @@ app.post('/api/questions', async (req, res) => {
   }
 });
 
-app.get('/api/questions', async (req, res) => {
+app.get('/api/questions', async (_, res) => {
   try {
     const result = await pool.query(
       'SELECT id, name, question, created_at FROM questions ORDER BY created_at DESC LIMIT 50'
@@ -56,7 +57,7 @@ app.get('/api/questions', async (req, res) => {
   }
 });
 
-// --- Answers endpoints
+// Answers
 app.post('/api/answers', async (req, res) => {
   const { question_id, name, answer } = req.body;
   if (!question_id || !answer) return res.status(400).send('question_id & answer required');
@@ -86,6 +87,5 @@ app.get('/api/answers/:question_id', async (req, res) => {
   }
 });
 
-// start
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT || 3000);
 app.listen(PORT, () => console.log(`backend running on port ${PORT}`));
